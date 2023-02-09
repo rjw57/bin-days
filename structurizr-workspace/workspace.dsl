@@ -48,7 +48,7 @@ workspace {
         enterprise "UIS" {
             engineer = person "Engineer" "" "Engineer"
 
-            monitoring = softwareSystem "Monitoring" "" "Google Cloud Platform - Monitoring"
+            monitoring = softwareSystem "Monitoring" "Google Cloud Platform Monitoring" "Google Cloud Platform - Monitoring"
             monitoring -> engineer "Alerts" "" "Failure recovery"
 
             scheduleSystem = softwareSystem "Schedule System" "" "Us" {
