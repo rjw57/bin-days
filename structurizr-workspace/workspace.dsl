@@ -1,41 +1,67 @@
 workspace {
 
     model {
-        councilXOfficer = person "Council X Officer" "" "Officer"
-        councilXInfrastructure = softwareSystem "Council X's Database" "" "Database"
-        councilXWebsite = softwareSystem "Council X's Website" "" "Website"
-        councilXOfficer -> councilXInfrastructure "Updates"
+        group "Walmington-on-Sea Council" {
+            councilWOfficer = person "Walmington-on-Sea Officer" "" "Officer"
+            councilWInfrastructure = softwareSystem "Walmington-on-Sea Schedule API" "" "Infrastructure"
+            councilWWebsite = softwareSystem "Walmington-on-Sea Website" "" "Website"
+            councilWOfficer -> councilWInfrastructure "Updates"
 
-        councilYOfficer = person "Council Y Officer" "" "Officer"
-        councilYInfrastructure = softwareSystem "Council Y's Published Schedule" "" "Website"
-        councilYWebsite = softwareSystem "Council Y's Website" "" "Website"
-        councilYOfficer -> councilYInfrastructure "Updates"
+            councilWTracker = softwareSystem "Walmington-on-Sea Lorry Tracking System" "" "Tracking"
+            councilWLorry = element "Bin Lorry" "" "" "Tracking"
+            councilWLorry -> councilWTracker "Sends location"
+        }
 
-        councilZOfficer = person "Council Z Officer" "" "Officer"
-        councilZInfrastructure = softwareSystem "Council Z's Scheduling system"
-        councilZWebsite = softwareSystem "Council Z's Website" "" "Website"
-        councilZOfficer -> councilZInfrastructure "Updates"
+        councilWResident = person "Walmington-on-Sea Council Resident" "" "Resident"
+        councilWResident -> councilWWebsite "Uses"
 
-        councilXResident = person "Council X Resident" "" "Resident"
+        group "Borsetshire Council" {
+            councilXOfficer = person "Borsetshire Officer" "" "Officer"
+            councilXInfrastructure = softwareSystem "Borsetshire Schedule Database" "" "Database, Infrastructure"
+            councilXWebsite = softwareSystem "Borsetshire Website" "" "Website"
+            councilXOfficer -> councilXInfrastructure "Updates"
+        }
+
+        councilXResident = person "Borsetshire Council Resident" "" "Resident"
         councilXResident -> councilXWebsite "Uses"
 
-        councilYResident = person "Council Y Resident" "" "Resident"
+        group "Scarfolk Council" {
+            councilYOfficer = person "Scarfolk Officer" "" "Officer"
+            councilYInfrastructure = softwareSystem "Scarfolk iCal Endpoint" "" "Website, Infrastructure"
+            councilYWebsite = softwareSystem "Scarfolk Website" "" "Website"
+            councilYOfficer -> councilYInfrastructure "Updates"
+        }
+
+        councilYResident = person "Scarfolk Council Resident" "" "Resident"
         councilYResident -> councilYWebsite "Uses"
 
-        councilZResident = person "Council Z Resident" "" "Resident"
+        group "Royston Vasey" {
+            councilZOfficer = person "Royston Vasey Officer" "" "Officer"
+            councilZInfrastructure = softwareSystem "Royston Vasey CSV Endpoint" "" "Website, Infrastructure"
+            councilZWebsite = softwareSystem "Royston Vasey Website" "" "Website"
+            councilZOfficer -> councilZInfrastructure "Updates"
+        }
+
+        councilZResident = person "Royston Vasey Resident" "" "Resident"
         councilZResident -> councilZWebsite "Uses"
 
         enterprise "UIS" {
             engineer = person "Engineer" "" "Engineer"
 
-            binDaysSystem = softwareSystem "Bin Days" "" "Us" {
-                monitoring = container "Monitoring" "" "" "Google Cloud Platform - Monitoring"
-                monitoring -> engineer "Alerts" "" "Failure recovery"
+            monitoring = softwareSystem "Monitoring" "" "Google Cloud Platform - Monitoring"
+            monitoring -> engineer "Alerts" "" "Failure recovery"
 
-                councilAPI = container "Council API" "Authenticated council-facing API" "Apigee" "Google Cloud Platform - Apigee API Platform"
-                monitoring -> councilAPI "Checks for elevated error rate"
+            scheduleSystem = softwareSystem "Schedule System" "" "Us" {
+                councilWIngest = container "Walmington-on-Sea Council Schedule Ingest" {
+                    councilWIngestTask = component "Ingest task" "" "Cloud Run" "Google Cloud Platform - Cloud Run"
+                    councilWIngestSchedule = component "Schedule" "" "Cloud Scheduler" "Google Cloud Platform - Cloud Scheduler"
 
-                councilXIngest = container "Council X Ingest" {
+                    councilWIngestSchedule -> councilWIngestTask "Invokes"
+                    councilWIngestTask -> councilWInfrastructure "Queries"
+                    monitoring -> councilWIngestTask "Checks for ingest failure"
+                }
+
+                councilXIngest = container "Borsetshire Council Schedule Ingest" {
                     councilXIngestTask = component "Ingest task" "" "Cloud Run" "Google Cloud Platform - Cloud Run"
                     councilXIngestSchedule = component "Schedule" "" "Cloud Scheduler" "Google Cloud Platform - Cloud Scheduler"
 
@@ -44,26 +70,22 @@ workspace {
                     monitoring -> councilXIngestTask "Checks for ingest failure"
                 }
 
-                councilYIngest = container "Council Y Ingest" {
+                councilYIngest = container "Scarfolk Council Schedule Ingest" {
                     councilYIngestTask = component "Ingest task" "" "Cloud Run" "Google Cloud Platform - Cloud Run"
                     councilYIngestSchedule = component "Schedule" "" "Cloud Scheduler" "Google Cloud Platform - Cloud Scheduler"
 
                     councilYIngestSchedule -> councilYIngestTask "Invokes"
-                    councilYIngestTask -> councilYInfrastructure "Scrapes"
+                    councilYIngestTask -> councilYInfrastructure "Fetches iCal Schedule"
                     monitoring -> councilYIngestTask "Checks for ingest failure"
                 }
 
-                councilZIngest = container "Council Z Ingest" {
-                    councilZIngestQueue = component "Ingest queue" "" "Cloud PubSub" "Google Cloud Platform - Cloud PubSub"
-                    councilZIngestDLQ = component "Dead-letter queue" "" "Cloud PubSub" "Google Cloud Platform - Cloud PubSub"
+                councilZIngest = container "Royston Vasey Schedule Ingest" {
                     councilZIngestTask = component "Ingest task" "" "Cloud Run" "Google Cloud Platform - Cloud Run"
+                    councilZIngestSchedule = component "Schedule" "" "Cloud Scheduler" "Google Cloud Platform - Cloud Scheduler"
 
-                    councilZIngestQueue -> councilZIngestTask "Invokes"
-                    councilZIngestQueue -> councilZIngestDLQ "Enqueues failures" "" "Failure recovery"
-                    monitoring -> councilZIngestDLQ "Checks for ingest failure"
-                    councilZIngestDLQ -> councilZIngestTask "Invokes" "" "Failure recovery"
-
-                    engineer -> councilZIngestDLQ "Process failed Council Z backlog" "" "Failure recovery"
+                    councilZIngestSchedule -> councilZIngestTask "Invokes"
+                    councilZIngestTask -> councilZInfrastructure "Fetches CSV Schedule"
+                    monitoring -> councilZIngestTask "Checks for ingest failure"
                 }
 
                 scheduleStore = container "Schedule store" "Data store and query engine" {
@@ -76,90 +98,186 @@ workspace {
                     alembic = component "Migration tool" "Database schema management and migration" "Alembic" "Offline tool"
                     alembic -> database "Manages schema of"
 
-                    updateQueue = component "Update publisher" "Publishes updated primary keys" "Cloud PubSub" "Google Cloud Platform - Cloud PubSub"
+                    updateQueue = component "Schedule publisher" "Publishes updated primary keys" "Cloud PubSub" "Google Cloud Platform - Cloud PubSub"
 
                     monitoring -> dlq "Monitors failed ingest"
                     ingestQueue -> dlq "Enqueues failures" "" "Failure recovery"
                     ingestQueue -> ingestTask "Invokes"
                     ingestTask -> database "Upserts schedules"
                     dlq -> ingestTask "Invokes" "" "Failure recovery"
-                    database -> updateQueue "Notifies updated row primary keys"
+                    database -> updateQueue "Notifies updated schedule primary keys"
 
                     engineer -> dlq "Process failed update backlog" "" "Failure recovery"
                     engineer -> alembic "Performs schema migration via"
                 }
 
-                staticPublisher = container "Schedule document store" {
+                staticPublisher = container "Static schedule document store" {
                     updateTask = component "Update task" "Formats schedules as JSON documents" "Cloud Run" "Google Cloud Platform - Cloud Run"
                     publishBucket = component "Published schedules" "" "Cloud Storage" "Google Cloud Platform - Cloud Storage"
                     publishEndpoint = component "CDN and firewall" "" "Cloud Load Balancing" "Google Cloud Platform - Cloud Load Balancing"
                     metricsDatabase = component "Metrics Database" "" "" "Database"
 
-                    updateQueue -> updateTask "Triggers passing updated row(s)"
-                    updateTask -> database "Queries"
+                    updateQueue -> updateTask "Notifies updated schedule primary key(s)"
+                    updateTask -> database "Queries data for schedule documents"
                     updateTask -> publishBucket "Uploads JSON documents to"
                     publishEndpoint -> publishBucket "Fetches JSON documents from"
                     publishEndpoint -> metricsDatabase "Updates"
+
+                    monitoring -> publishEndpoint "Monitors elevated error rate"
                 }
 
                 residentSite = container "Query UI" "" "IFrame" "Website"
                 residentSite -> publishEndpoint "Fetches JSON documents from"
 
-                councilZInfrastructure -> councilAPI "Pushes new schedules"
-                councilAPI -> councilZIngestQueue "Enqueues schedules"
+                councilWIngestTask -> ingestQueue "Enqueues schedules"
                 councilXIngestTask -> ingestQueue "Enqueues schedules"
                 councilYIngestTask -> ingestQueue "Enqueues schedules"
                 councilZIngestTask -> ingestQueue "Enqueues schedules"
             }
+
+            trackingSystem = softwareSystem "Tracking System" "" "Us" {
+                trackingStore = container "Tracking store" "Data store and query engine" "" "Tracking" {
+                    trackingIngestTask = component "Ingest task" "Processes new locations" "Cloud Run" "Google Cloud Platform - Cloud Run"
+                    trackerQueue = component "Tracker publisher" "Publishes newly received locations" "Cloud PubSub" "Google Cloud Platform - Cloud PubSub"
+
+                    trackingDatabase = component "Database" "Stores Recent Lorry Locations" "Cloud SQL" "Google Cloud Platform - Cloud SQL, Database"
+                    trackingAlembic = component "Migration tool" "Database schema management and migration" "Alembic" "Offline tool"
+                    trackingAlembic -> trackingDatabase "Manages schema of"
+
+                    trackingIngestTask -> trackerQueue "Pushes most recent location"
+                    trackingIngestTask -> trackingDatabase "Upserts most recent location"
+
+                    engineer -> trackingAlembic "Performs schema migration via"
+                    monitoring -> trackingIngestTask "Monitor elevated failure rate"
+                }
+
+                trackingIngestAPI = container "Tracking Ingest API" {
+                    realTimeEndpoint = component "Council-facing Tracking API" "" "Apigee" "Google Cloud Platform - Apigee API Platform"
+                    monitoring -> realTimeEndpoint "Monitors for elevated errors"
+                }
+
+                realTimeEndpoint -> trackingIngestTask "Sends new location"
+
+                trackingQueryAPI = container "Tracking Query API" {
+                    trackingQueryHTTPS = component "HTTP Current Status Endpoint Handler" "" "Cloud Run" "Google Cloud Platform - Cloud Run"
+                    trackingQueryWS = component "WebSocket Realtime Update Endpoint Handler" "" "Cloud Run" "Google Cloud Platform - Cloud Run"
+
+                    trackingQueryHTTPS -> trackingDatabase "Queries most recent locations"
+                    trackingQueryWS -> trackerQueue "Subscribes to filtered updates from"
+
+                    monitoring -> trackingQueryHTTPS "Monitors for elevated errors"
+                    monitoring -> trackingQueryWS "Monitors for elevated errors"
+                }
+
+                trackingSite = container "Tracking UI" "" "IFrame" "Website,Tracking"
+                trackingSite -> trackingQueryHTTPS "Fetches bootstrap locations"
+                trackingQueryWS -> trackingSite "Pushes location updates"
+            }
         }
 
-        councilXWebsite -> residentSite "Embeds UI from"
-        councilYWebsite -> residentSite "Embeds UI from"
-        councilZWebsite -> residentSite "Embeds UI from"
+        councilWTracker -> realTimeEndpoint "Sends lorry locations"
+
+        councilWWebsite -> residentSite "Embeds Schedule UI from"
+        councilXWebsite -> residentSite "Embeds Schedule UI from"
+        councilYWebsite -> residentSite "Embeds Schedule UI from"
+        councilZWebsite -> residentSite "Embeds Schedule UI from"
+
+        councilWWebsite -> trackingSite "Embeds Tracking UI from"
     }
 
     views {
-        systemLandscape "landscape" "System Landscape" {
+        systemLandscape "ingestLandscape" "System Landscape: Council" {
             include *
-            exclude engineer
+            exclude engineer councilWWebsite councilXWebsite councilYWebsite councilZWebsite element.tag==Resident monitoring
         }
 
-        container binDaysSystem "system" "Bin Days System" {
+        systemLandscape "residentLandscape" "System Landscape: Resident" {
+            include *
+            exclude engineer element.tag==Officer element.tag==Infrastructure element.tag==Tracking monitoring
+        }
+
+        container scheduleSystem "scheduleSystem" "Bin Day Schedules System" {
             include *
             exclude engineer monitoring
         }
 
-        component councilXIngest "councilXIngest" "Council X Ingest" {
+        component councilWIngest "councilWIngest" "Walmington-on-Sea Ingest" {
             include * engineer
             exclude engineer->scheduleStore
             exclude monitoring->scheduleStore
+            autoLayout tb
         }
 
-        component councilYIngest "councilYIngest" "Council Y Ingest" {
+        component councilXIngest "councilXIngest" "Borsetshire Ingest" {
             include * engineer
             exclude engineer->scheduleStore
             exclude monitoring->scheduleStore
+            autoLayout tb
         }
 
-        component councilZIngest "councilZIngest" "Council Z Ingest" {
+        component councilYIngest "councilYIngest" "Scarfolk Ingest" {
+            include * engineer
+            exclude engineer->scheduleStore
+            exclude monitoring->scheduleStore
+            autoLayout tb
+        }
+
+        component councilZIngest "councilZIngest" "Royston Vasey Ingest" {
             include * engineer councilZInfrastructure
             exclude engineer->scheduleStore
-            exclude monitoring->councilAPI
             exclude monitoring->scheduleStore
+            autoLayout tb
         }
 
-        component scheduleStore "scheduleStore" "Schedule Store" {
+        component scheduleStore "scheduleStore" {
             include * engineer
+            exclude engineer->councilWIngest
             exclude engineer->councilXIngest
             exclude engineer->councilYIngest
             exclude engineer->councilZIngest
+            exclude monitoring->councilWIngest
             exclude monitoring->councilXIngest
             exclude monitoring->councilYIngest
             exclude monitoring->councilZIngest
+            exclude monitoring->staticPublisher
         }
 
-        component staticPublisher "staticPublisher" "Static Publication" {
+        container trackingSystem "trackingSystem" {
             include *
+            exclude engineer monitoring
+        }
+
+        component trackingIngestAPI "trackingIngestAPI" {
+            include * engineer
+            exclude engineer->trackingStore
+            exclude monitoring->trackingStore
+        }
+
+        component trackingQueryAPI "trackingQueryAPI" {
+            include * engineer
+            exclude engineer->trackingStore
+            exclude monitoring->trackingStore
+        }
+
+        component trackingStore "trackingStore" {
+            include * engineer
+            exclude engineer->trackingIngestAPI
+            exclude engineer->councilWIngest
+            exclude engineer->councilXIngest
+            exclude engineer->councilYIngest
+            exclude engineer->councilZIngest
+            exclude monitoring->trackingIngestAPI
+            exclude monitoring->councilWIngest
+            exclude monitoring->councilXIngest
+            exclude monitoring->councilYIngest
+            exclude monitoring->councilZIngest
+            exclude monitoring->trackingQueryAPI
+        }
+
+        component staticPublisher "staticPublisher" {
+            include * engineer
+            exclude engineer->scheduleStore
+            exclude monitoring->scheduleStore
         }
 
         themes https://static.structurizr.com/themes/google-cloud-platform-v1.5/theme.json
@@ -171,7 +289,7 @@ workspace {
             }
 
             element "Officer" {
-                background darkgreen
+                background darkblue
             }
 
             element "Resident" {
