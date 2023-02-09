@@ -90,12 +90,12 @@ workspace {
                 }
 
                 staticPublisher = container "Schedule document store" {
-                    updateTask = component "Update task" "Formats updates as JSON documents" "Cloud Run" "Google Cloud Platform - Cloud Run"
+                    updateTask = component "Update task" "Formats schedules as JSON documents" "Cloud Run" "Google Cloud Platform - Cloud Run"
                     publishBucket = component "Published schedules" "" "Cloud Storage" "Google Cloud Platform - Cloud Storage"
                     publishEndpoint = component "CDN and firewall" "" "Cloud Load Balancing" "Google Cloud Platform - Cloud Load Balancing"
                     metricsDatabase = component "Metrics Database" "" "" "Database"
 
-                    updateQueue -> updateTask "Invokes"
+                    updateQueue -> updateTask "Triggers passing updated row(s)"
                     updateTask -> database "Queries"
                     updateTask -> publishBucket "Uploads JSON documents to"
                     publishEndpoint -> publishBucket "Fetches JSON documents from"
@@ -103,13 +103,13 @@ workspace {
                 }
 
                 residentSite = container "Query UI" "" "IFrame" "Website"
-                residentSite -> publishEndpoint "Fetches schedule from"
+                residentSite -> publishEndpoint "Fetches JSON documents from"
 
-                councilZInfrastructure -> councilAPI "Pushes updates"
-                councilAPI -> councilZIngestQueue "Enqueues updates"
-                councilXIngestTask -> ingestQueue "Enqueues updates"
-                councilYIngestTask -> ingestQueue "Enqueues updates"
-                councilZIngestTask -> ingestQueue "Enqueues updates"
+                councilZInfrastructure -> councilAPI "Pushes new schedules"
+                councilAPI -> councilZIngestQueue "Enqueues schedules"
+                councilXIngestTask -> ingestQueue "Enqueues schedules"
+                councilYIngestTask -> ingestQueue "Enqueues schedules"
+                councilZIngestTask -> ingestQueue "Enqueues schedules"
             }
         }
 
