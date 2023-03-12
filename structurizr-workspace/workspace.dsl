@@ -12,7 +12,7 @@ workspace {
             councilWLorry -> councilWTracker "Sends location"
         }
 
-        councilWResident = person "Walmington-on-Sea Council Resident" "" "Resident"
+        councilWResident = person "Walmington-on-Sea Resident" "" "Resident"
         councilWResident -> councilWWebsite "Uses"
 
         group "Borsetshire Council" {
@@ -22,7 +22,7 @@ workspace {
             councilXOfficer -> councilXInfrastructure "Updates"
         }
 
-        councilXResident = person "Borsetshire Council Resident" "" "Resident"
+        councilXResident = person "Borsetshire Resident" "" "Resident"
         councilXResident -> councilXWebsite "Uses"
 
         group "Scarfolk Council" {
@@ -32,7 +32,7 @@ workspace {
             councilYOfficer -> councilYInfrastructure "Updates"
         }
 
-        councilYResident = person "Scarfolk Council Resident" "" "Resident"
+        councilYResident = person "Scarfolk Resident" "" "Resident"
         councilYResident -> councilYWebsite "Uses"
 
         group "Royston Vasey" {
@@ -52,7 +52,7 @@ workspace {
             monitoring -> engineer "Alerts" "" "Failure recovery"
 
             scheduleSystem = softwareSystem "Schedule System" "" "Us" {
-                councilWIngest = container "Walmington-on-Sea Council Schedule Ingest" {
+                councilWIngest = container "Walmington-on-Sea Schedule Ingest" {
                     councilWIngestTask = component "Ingest task" "" "Cloud Run" "Google Cloud Platform - Cloud Run"
                     councilWIngestSchedule = component "Schedule" "" "Cloud Scheduler" "Google Cloud Platform - Cloud Scheduler"
 
@@ -61,7 +61,7 @@ workspace {
                     monitoring -> councilWIngestTask "Checks for ingest failure"
                 }
 
-                councilXIngest = container "Borsetshire Council Schedule Ingest" {
+                councilXIngest = container "Borsetshire Schedule Ingest" {
                     councilXIngestTask = component "Ingest task" "" "Cloud Run" "Google Cloud Platform - Cloud Run"
                     councilXIngestSchedule = component "Schedule" "" "Cloud Scheduler" "Google Cloud Platform - Cloud Scheduler"
 
@@ -70,7 +70,7 @@ workspace {
                     monitoring -> councilXIngestTask "Checks for ingest failure"
                 }
 
-                councilYIngest = container "Scarfolk Council Schedule Ingest" {
+                councilYIngest = container "Scarfolk Schedule Ingest" {
                     councilYIngestTask = component "Ingest task" "" "Cloud Run" "Google Cloud Platform - Cloud Run"
                     councilYIngestSchedule = component "Schedule" "" "Cloud Scheduler" "Google Cloud Platform - Cloud Scheduler"
 
@@ -159,19 +159,21 @@ workspace {
                 realTimeEndpoint -> trackingIngestTask "Sends new location"
 
                 trackingQueryAPI = container "Tracking Query API" {
+                    trackingQueryEndpoint = component "Resident-facing Tracking API" "Provides rate-limiting" "Apigee" "Google Cloud Platform - Apigee API Platform"
                     trackingQueryHTTPS = component "HTTP Current Status Endpoint Handler" "" "Cloud Run" "Google Cloud Platform - Cloud Run"
                     trackingQueryWS = component "WebSocket Realtime Update Endpoint Handler" "" "Cloud Run" "Google Cloud Platform - Cloud Run"
 
+                    trackingQueryEndpoint -> trackingQueryHTTPS "Forwards HTTP requests"
+                    trackingQueryEndpoint -> trackingQueryWS "Forwards WebSocket requests"
                     trackingQueryHTTPS -> trackingDatabase "Queries most recent locations"
                     trackingQueryWS -> trackerQueue "Subscribes to filtered updates from"
 
-                    monitoring -> trackingQueryHTTPS "Monitors for elevated errors"
-                    monitoring -> trackingQueryWS "Monitors for elevated errors"
+                    monitoring -> trackingQueryEndpoint "Monitors for elevated errors"
                 }
 
                 trackingSite = container "Tracking UI" "" "IFrame" "Website,Tracking"
-                trackingSite -> trackingQueryHTTPS "Fetches bootstrap locations"
-                trackingQueryWS -> trackingSite "Pushes location updates"
+                trackingSite -> trackingQueryEndpoint "Fetches bootstrap locations via HTTP"
+                trackingQueryEndpoint -> trackingSite "Pushes location updates via WebSocket"
             }
         }
 
